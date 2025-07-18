@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TaskMate Pro - Ultimate To-Do List</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#6366f1',
+                        secondary: '#8b5cf6',
+                        dark: '#1e293b',
+                        light: '#f8fafc',
+                        success: '#10b981',
+                        warning: '#f59e0b',
+                        danger: '#ef4444',
+                    },
+                    animation: {
+                        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                        'bounce-slow': 'bounce 2s infinite',
+                        'fade-in': 'fadeIn 0.5s ease-in-out',
+                        'slide-in': 'slideIn 0.5s ease-out',
+                        'pop-in': 'popIn 0.3s ease-out',
+                        'fade-out': 'fadeOut 0.5s ease-in-out',
+                    },
+                    keyframes: {
+                        fadeIn: {
+                            '0%': { opacity: '0' },
+                            '100%': { opacity: '1' },
+                        },
+                        slideIn: {
+                            '0%': { transform: 'translateY(20px)', opacity: '0' },
+                            '100%': { transform: 'translateY(0)', opacity: '1' },
+                        },
+                        popIn: {
+                            '0%': { transform: 'scale(0.8)', opacity: '0' },
+                            '70%': { transform: 'scale(1.1)', opacity: '1' },
+                            '100%': { transform: 'scale(1)', opacity: '1' },
+                        },
+                        fadeOut: {
+                            '0%': { opacity: '1' },
+                            '100%': { opacity: '0' },
+                        },
+                    }
+                }
+            }
+        }
+    </script>
+    <style type="text/css">
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+        
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: linear-gradient(135deg, #f0f9ff, #e0f2fe);
+            min-height: 100vh;
+            margin: 0;
+            padding: 0;
+            overflow-x: hidden;
+        }
+        
+        .task-card {
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+        }
+        
+        .task-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
+        }
+        
+        .task-complete {
+            text-decoration: line-through;
+            color: #94a3b8;
+        }
+        
+        .progress-bar {
+            transition: width 0.5s ease-in-out;
+        }
+        
+        .confetti {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background-color: #f59e0b;
+            animation: fall linear forwards;
+        }
+        
+        @keyframes fall {
+            to {
+                transform: translateY(100vh) rotate(360deg);
+                opacity: 0;
+            }
+        }
+        
+        .drag-handle {
+            cursor: grab;
+            transition: transform 0.2s;
+        }
+        
+        .drag-handle:active {
+            cursor: grabbing;
+            transform: scale(1.1);
+        }
+        
+        .empty-state {
+            animation: pulse-slow 2s infinite;
+        }
+        
+        .task-enter {
+            animation: slide-in 0.4s forwards;
+        }
+        
+        .task-exit {
+            animation: fade-out 0.3s forwards;
+        }
+        
+        .priority-high {
+            border-left: 4px solid #ef4444;
+        }
+        
+        .priority-medium {
+            border-left: 4px solid #f59e0b;
+        }
+        
+        .priority-low {
+            border-left: 4px solid #10b981;
+        }
+        
+        .category-tag {
+            transition: all 0.2s ease;
+        }
+        
+        .category-tag:hover {
+            transform: scale(1.05);
+        }
+        
+        .stats-card {
+            animation: fade-in 0.6s ease-out;
+        }
+    </style>
+</head>
+<body class="min-h-screen py-8 px-4 sm:px-6 lg:px-8">
+    <div class="max-w-4xl mx-auto">
+        <!-- Header -->
+        <header class="text-center mb-12">
+            <div class="flex items-center justify-center mb-4">
+                <div class="bg-primary w-14 h-14 rounded-xl flex items-center justify-center shadow-lg mr-4">
+                    <i class="fas fa-tasks text-white text-2xl"></i>
+                </div>
+                <h1 class="text-4xl md:text-5xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">TaskMate Pro</h1>
+            </div>
+            <p class="text-slate-600 max-w-md mx-auto">The ultimate task management experience with beautiful animations and intuitive workflow</p>
+        </header>
+
+        <!-- Main Container -->
+        <div class="bg-white rounded-2xl shadow-xl overflow-hidden">
+            <div class="grid md:grid-cols-4">
+                <!-- Sidebar -->
+                <div class="md:col-span-1 bg-gradient-to-b from-primary to-secondary p-6 text-white">
+                    <div class="mb-8">
+                        <h2 class="text-xl font-bold mb-4">Categories</h2>
+                        <ul class="space-y-2">
+                            <li class="flex items-center cursor-pointer hover:bg-indigo-500 px-3 py-2 rounded-lg transition-all">
+                                <i class="fas fa-briefcase mr-3"></i>
+                                <span>Work</span>
+                            </li>
+                            <li class="flex items-center cursor-pointer hover:bg-indigo-500 px-3 py-2 rounded-lg transition-all">
+                                <i class="fas fa-home mr-3"></i>
+                                <span>Personal</span>
+                            </li>
+                            <li class="flex items-center cursor-pointer hover:bg-indigo-500 px-3 py-2 rounded-lg transition-all">
+                                <i class="fas fa-shopping-cart mr-3"></i>
+                                <span>Shopping</span>
+                            </li>
+                            <li class="flex items-center cursor-pointer hover:bg-indigo-500 px-3 py-2 rounded-lg transition-all">
+                                <i class="fas fa-heart mr-3"></i>
+                                <span>Health</span>
+                            </li>
+                        </ul>
+                    </div>
+                    
+                    <div class="mb-8">
+                        <h2 class="text-xl font-bold mb-4">Filters</h2>
+                        <ul class="space-y-2">
+                            <li class="flex items-center cursor-pointer hover:bg-indigo-500 px-3 py-2 rounded-lg transition-all">
+                                <i class="fas fa-star mr-3"></i>
+                                <span>High Priority</span>
+                            </li>
+                            <li class="flex items-center cursor-pointer hover:bg-indigo-500 px-3 py-2 rounded-lg transition-all">
+                                <i class="fas fa-check-circle mr-3"></i>
+                                <span>Completed</span>
+                            </li>
+                            <li class="flex items-center cursor-pointer hover:bg-indigo-500 px-3 py-2 rounded-lg transition-all">
+                                <i class="fas fa-clock mr-3"></i>
+                                <span>Today</span>
+                            </li>
+                        </ul>
+                    </div>
+                    
+                    <div class="bg-indigo-800 p-4 rounded-xl">
+                        <h3 class="font-bold mb-2">Productivity</h3>
+                        <div class="w-full bg-indigo-900 rounded-full h-2 mb-2">
+                            <div class="bg-green-400 h-2 rounded-full w-3/4"></div>
+                        </div>
+                        <p class="text-sm">75% tasks completed</p>
+                    </div>
+                </div>
+                
+                <!-- Main Content -->
+                <div class="md:col-span-3 p-6">
+                    <!-- Stats Cards -->
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+                        <div class="stats-card bg-gradient-to-r from-green-100 to-green-50 p-4 rounded-xl border border-green-200">
+                            <div class="flex justify-between items-center">
+                                <div>
+                                    <p class="text-sm text-slate-600">Total Tasks</p>
+                                    <p class="text-2xl font-bold text-slate-800">24</p>
+                                </div>
+                                <div class="w-12 h-12 rounded-full bg-green-200 flex items-center justify-center">
+                                    <i class="fas fa-tasks text-green-600"></i>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="stats-card bg-gradient-to-r from-blue-100 to-blue-50 p-4 rounded-xl border border-blue-200">
+                            <div class="flex justify-between items-center">
+                                <div>
+                                    <p class="text-sm text-slate-600">Completed</p>
+                                    <p class="text-2xl font-bold text-slate-800">18</p>
+                                </div>
+                                <div class="w-12 h-12 rounded-full bg-blue-200 flex items-center justify-center">
+                                    <i class="fas fa-check-circle text-blue-600"></i>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="stats-card bg-gradient-to-r from-amber-100 to-amber-50 p-4 rounded-xl border border-amber-200">
+                            <div class="flex justify-between items-center">
+                                <div>
+                                    <p class="text-sm text-slate-600">Pending</p>
+                                    <p class="text-2xl font-bold text-slate-800">6</p>
+                                </div>
+                                <div class="w-12 h-12 rounded-full bg-amber-200 flex items-center justify-center">
+                                    <i class="fas fa-clock text-amber-600"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Add Task Form -->
+                    <div class="bg-gradient-to-r from-indigo-50 to-purple-50 p-5 rounded-xl mb-8 shadow-sm border border-indigo-100">
+                        <h2 class="text-xl font-bold text-slate-800 mb-4">Add New Task</h2>
+                        <div class="flex flex-col sm:flex-row gap-3">
+                            <input type="text" placeholder="What needs to be done?" class="flex-grow px-4 py-3 rounded-lg border border-indigo-200 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all">
+                            <select class="px-4 py-3 rounded-lg border border-indigo-200 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all">
+                                <option>High Priority</option>
+                                <option>Medium Priority</option>
+                                <option>Low Priority</option>
+                            </select>
+                            <button class="bg-primary hover:bg-indigo-600 text-white px-6 py-3 rounded-lg font-medium transition-all transform hover:scale-105 shadow-md flex items-center">
+                                <i class="fas fa-plus mr-2"></i> Add Task
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Task List -->
+                    <div class="mb-8">
+                        <div class="flex justify-between items-center mb-6">
+                            <h2 class="text-xl font-bold text-slate-800">Your Tasks</h2>
+                            <div class="flex space-x-2">
+                                <button class="px-3 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition-all">
+                                    <i class="fas fa-sort-amount-down"></i> Sort
+                                </button>
+                                <button class="px-3 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition-all">
+                                    <i class="fas fa-filter"></i> Filter
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div id="task-list" class="space-y-4">
+                            <!-- Task Item 1 -->
+                            <div class="task-card task-enter bg-white rounded-xl p-4 border-l-4 priority-high flex items-start shadow-sm hover:shadow-md transition-all">
+                                <div class="drag-handle mr-3 pt-2 text-slate-300 hover:text-slate-500 cursor-move">
+                                    <i class="fas fa-grip-lines"></i>
+                                </div>
+                                <div class="flex items-start mr-3 mt-1">
+                                    <div class="relative">
+                                        <input type="checkbox" class="opacity-0 absolute h-6 w-6 cursor-pointer">
+                                        <div class="bg-white border-2 border-slate-300 w-6 h-6 rounded-full flex items-center justify-center">
+                                            <i class="fas fa-check text-white text-xs"></i>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="flex-grow">
+                                    <div class="font-medium">Complete project proposal</div>
+                                    <div class="text-sm text-slate-500 mt-1">Due: Today, 5:00 PM</div>
+                                    <div class="flex flex-wrap gap-2 mt-2">
+                                        <span class="category-tag bg-red-100 text-red-800 text-xs px-2 py-1 rounded-full">Work</span>
+                                        <span class="category-tag bg-amber-100 text-amber-800 text-xs px-2 py-1 rounded-full">Urgent</span>
+                                    </div>
+                                </div>
+                                <div class="flex space-x-2 ml-2">
+                                    <button class="w-8 h-8 rounded-full hover:bg-slate-100 flex items-center justify-center transition-all text-slate-500 hover:text-slate-700">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <button class="w-8 h-8 rounded-full hover:bg-red-100 flex items-center justify-center transition-all text-slate-500 hover:text-red-600">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <!-- Task Item 2 -->
+                            <div class="task-card task-enter bg-white rounded-xl p-4 border-l-4 priority-medium flex items-start shadow-sm hover:shadow-md transition-all">
+                                <div class="drag-handle mr-3 pt-2 text-slate-300 hover:text-slate-500 cursor-move">
+                                    <i class="fas fa-grip-lines"></i>
+                                </div>
+                                <div class="flex items-start mr-3 mt-1">
+                                    <div class="relative">
+                                        <input type="checkbox" class="opacity-0 absolute h-6 w-6 cursor-pointer">
+                                        <div class="bg-white border-2 border-slate-300 w-6 h-6 rounded-full flex items-center justify-center">
+                                            <i class="fas fa-check text-white text-xs"></i>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="flex-grow">
+                                    <div class="font-medium">Buy groceries for the week</div>
+                                    <div class="text-sm text-slate-500 mt-1">Due: Tomorrow</div>
+                                    <div class="flex flex-wrap gap-2 mt-2">
+                                        <span class="category-tag bg-purple-100 text-purple-800 text-xs px-2 py-1 rounded-full">Shopping</span>
+                                        <span class="category-tag bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full">Home</span>
+                                    </div>
+                                </div>
+                                <div class="flex space-x-2 ml-2">
+                                    <button class="w-8 h-8 rounded-full hover:bg-slate-100 flex items-center justify-center transition-all text-slate-500 hover:text-slate-700">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <button class="w-8 h-8 rounded-full hover:bg-red-100 flex items-center justify-center transition-all text-slate-500 hover:text-red-600">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <!-- Task Item 3 (Completed) -->
+                            <div class="task-card task-enter bg-slate-50 rounded-xl p-4 border-l-4 priority-low flex items-start shadow-sm">
+                                <div class="drag-handle mr-3 pt-2 text-slate-300 hover:text-slate-500 cursor-move">
+                                    <i class="fas fa-grip-lines"></i>
+                                </div>
+                                <div class="flex items-start mr-3 mt-1">
+                                    <div class="relative">
+                                        <input type="checkbox" checked class="opacity-0 absolute h-6 w-6 cursor-pointer">
+                                        <div class="bg-green-500 border-2 border-green-500 w-6 h-6 rounded-full flex items-center justify-center">
+                                            <i class="fas fa-check text-white text-xs"></i>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="flex-grow">
+                                    <div class="font-medium text-slate-400 task-complete">Schedule team meeting</div>
+                                    <div class="text-sm text-slate-400 mt-1">Completed: Today, 10:30 AM</div>
+                                    <div class="flex flex-wrap gap-2 mt-2">
+                                        <span class="category-tag bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">Work</span>
+                                        <span class="category-tag bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full">Team</span>
+                                    </div>
+                                </div>
+                                <div class="flex space-x-2 ml-2">
+                                    <button class="w-8 h-8 rounded-full hover:bg-slate-100 flex items-center justify-center transition-all text-slate-400 hover:text-slate-600">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <button class="w-8 h-8 rounded-full hover:bg-red-100 flex items-center justify-center transition-all text-slate-400 hover:text-red-600">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <!-- Task Item 4 -->
+                            <div class="task-card task-enter bg-white rounded-xl p-4 border-l-4 priority-high flex items-start shadow-sm hover:shadow-md transition-all">
+                                <div class="drag-handle mr-3 pt-2 text-slate-300 hover:text-slate-500 cursor-move">
+                                    <i class="fas fa-grip-lines"></i>
+                                </div>
+                                <div class="flex items-start mr-3 mt-1">
+                                    <div class="relative">
+                                        <input type="checkbox" class="opacity-0 absolute h-6 w-6 cursor-pointer">
+                                        <div class="bg-white border-2 border-slate-300 w-6 h-6 rounded-full flex items-center justify-center">
+                                            <i class="fas fa-check text-white text-xs"></i>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="flex-grow">
+                                    <div class="font-medium">Prepare presentation for client meeting</div>
+                                    <div class="text-sm text-slate-500 mt-1">Due: Tomorrow, 10:00 AM</div>
+                                    <div class="flex flex-wrap gap-2 mt-2">
+                                        <span class="category-tag bg-red-100 text-red-800 text-xs px-2 py-1 rounded-full">Work</span>
+                                        <span class="category-tag bg-amber-100 text-amber-800 text-xs px-2 py-1 rounded-full">Presentation</span>
+                                    </div>
+                                </div>
+                                <div class="flex space-x-2 ml-2">
+                                    <button class="w-8 h-8 rounded-full hover:bg-slate-100 flex items-center justify-center transition-all text-slate-500 hover:text-slate-700">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <button class="w-8 h-8 rounded-full hover:bg-red-100 flex items-center justify-center transition-all text-slate-500 hover:text-red-600">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Empty State -->
+                        <div class="empty-state hidden text-center py-12">
+                            <div class="mx-auto w-24 h-24 rounded-full bg-indigo-100 flex items-center justify-center mb-4">
+                                <i class="fas fa-check-circle text-indigo-500 text-4xl"></i>
+                            </div>
+                            <h3 class="text-xl font-bold text-slate-700 mb-2">All tasks completed!</h3>
+                            <p class="text-slate-500 max-w-md mx-auto">You've finished all your tasks. Add new tasks or enjoy your free time.</p>
+                        </div>
+                    </div>
+                    
+                    <!-- Progress Section -->
+                    <div class="bg-gradient-to-r from-slate-50 to-slate-100 p-5 rounded-xl border border-slate-200">
+                        <div class="flex justify-between items-center mb-3">
+                            <h3 class="font-bold text-slate-700">Today's Progress</h3>
+                            <span class="text-sm font-medium text-primary">6/8 tasks</span>
+                        </div>
+                        <div class="w-full bg-slate-200 rounded-full h-3">
+                            <div class="progress-bar bg-gradient-to-r from-primary to-secondary h-3 rounded-full w-3/4"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Footer -->
+        <footer class="text-center mt-12 text-slate-600">
+            <p>TaskMate Pro - Ultimate Productivity Tool © 2023</p>
+            <div class="flex justify-center space-x-4 mt-2">
+                <button class="text-slate-500 hover:text-primary transition-colors">
+                    <i class="fab fa-twitter"></i>
+                </button>
+                <button class="text-slate-500 hover:text-primary transition-colors">
+                    <i class="fab fa-facebook"></i>
+                </button>
+                <button class="text-slate-500 hover:text-primary transition-colors">
+                    <i class="fab fa-instagram"></i>
+                </button>
+                <button class="text-slate-500 hover:text-primary transition-colors">
+                    <i class="fab fa-github"></i>
+                </button>
+            </div>
+        </footer>
+    </div>
+
+    <script>
+        // Initialize drag and drop
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize task list sorting
+            const taskList = document.getElementById('task-list');
+            new Sortable(taskList, {
+                handle: '.drag-handle',
+                animation: 150,
+                ghostClass: 'bg-indigo-50',
+                onUpdate: function() {
+                    console.log('Task order updated');
+                }
+            });
+            
+            // Checkbox animation
+            const checkboxes = document.querySelectorAll('input[type="checkbox"]');
+            checkboxes.forEach(checkbox => {
+                checkbox.addEventListener('change', function() {
+                    const taskCard = this.closest('.task-card');
+                    const checkIcon = this.nextElementSibling.querySelector('i');
+                    
+                    if (this.checked) {
+                        // Create confetti effect
+                        createConfetti(taskCard);
+                        
+                        // Animate completion
+                        setTimeout(() => {
+                            taskCard.classList.add('bg-green-50');
+                            checkIcon.parentElement.classList.remove('bg-white', 'border-slate-300');
+                            checkIcon.parentElement.classList.add('bg-green-500', 'border-green-500');
+                            
+                            const taskText = taskCard.querySelector('.font-medium');
+                            taskText.classList.add('task-complete');
+                        }, 300);
+                    } else {
+                        taskCard.classList.remove('bg-green-50');
+                        checkIcon.parentElement.classList.remove('bg-green-500', 'border-green-500');
+                        checkIcon.parentElement.classList.add('bg-white', 'border-slate-300');
+                        
+                        const taskText = taskCard.querySelector('.font-medium');
+                        taskText.classList.remove('task-complete');
+                    }
+                });
+            });
+            
+            // Create confetti effect
+            function createConfetti(container) {
+                const colors = ['#f59e0b', '#ef4444', '#10b981', '#6366f1', '#8b5cf6'];
+                const confettiCount = 30;
+                
+                for (let i = 0; i < confettiCount; i++) {
+                    const confetti = document.createElement('div');
+                    confetti.className = 'confetti';
+                    confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+                    confetti.style.left = Math.random() * 100 + '%';
+                    confetti.style.top = '0';
+                    confetti.style.width = Math.random() * 10 + 5 + 'px';
+                    confetti.style.height = confetti.style.width;
+                    confetti.style.animationDuration = Math.random() * 3 + 2 + 's';
+                    container.appendChild(confetti);
+                    
+                    setTimeout(() => {
+                        confetti.remove();
+                    }, 5000);
+                }
+            }
+            
+            // Add task animation
+            const addTaskBtn = document.querySelector('.bg-primary');
+            addTaskBtn.addEventListener('click', function() {
+                const taskInput = this.previousElementSibling.previousElementSibling;
+                if (taskInput.value.trim() === '') {
+                    // Shake animation for empty input
+                    taskInput.classList.add('animate-shake');
+                    setTimeout(() => {
+                        taskInput.classList.remove('animate-shake');
+                    }, 500);
+                    return;
+                }
+                
+                // Create a new task element
+                const newTask = document.createElement('div');
+                newTask.className = 'task-card bg-white rounded-xl p-4 border-l-4 priority-medium flex items-start shadow-sm hover:shadow-md transition-all task-enter';
+                newTask.innerHTML = `
+                    <div class="drag-handle mr-3 pt-2 text-slate-300 hover:text-slate-500 cursor-move">
+                        <i class="fas fa-grip-lines"></i>
+                    </div>
+                    <div class="flex items-start mr-3 mt-1">
+                        <div class="relative">
+                            <input type="checkbox" class="opacity-0 absolute h-6 w-6 cursor-pointer">
+                            <div class="bg-white border-2 border-slate-300 w-6 h-6 rounded-full flex items-center justify-center">
+                                <i class="fas fa-check text-white text-xs"></i>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex-grow">
+                        <div class="font-medium">${taskInput.value}</div>
+                        <div class="text-sm text-slate-500 mt-1">Due: Tomorrow</div>
+                        <div class="flex flex-wrap gap-2 mt-2">
+                            <span class="category-tag bg-purple-100 text-purple-800 text-xs px-2 py-1 rounded-full">New</span>
+                        </div>
+                    </div>
+                    <div class="flex space-x-2 ml-2">
+                        <button class="w-8 h-8 rounded-full hover:bg-slate-100 flex items-center justify-center transition-all text-slate-500 hover:text-slate-700">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="w-8 h-8 rounded-full hover:bg-red-100 flex items-center justify-center transition-all text-slate-500 hover:text-red-600">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                `;
+                
+                // Add to the top of the task list
+                taskList.insertBefore(newTask, taskList.firstChild);
+                
+                // Clear input
+                taskInput.value = '';
+                
+                // Add event listener to the new checkbox
+                const newCheckbox = newTask.querySelector('input[type="checkbox"]');
+                newCheckbox.addEventListener('change', function() {
+                    const taskCard = this.closest('.task-card');
+                    const checkIcon = this.nextElementSibling.querySelector('i');
+                    
+                    if (this.checked) {
+                        createConfetti(taskCard);
+                        
+                        setTimeout(() => {
+                            taskCard.classList.add('bg-green-50');
+                            checkIcon.parentElement.classList.remove('bg-white', 'border-slate-300');
+                            checkIcon.parentElement.classList.add('bg-green-500', 'border-green-500');
+                            
+                            const taskText = taskCard.querySelector('.font-medium');
+                            taskText.classList.add('task-complete');
+                        }, 300);
+                    }
+                });
+                
+                // Add event listener to the delete button
+                const deleteBtn = newTask.querySelector('.fa-trash').closest('button');
+                deleteBtn.addEventListener('click', function() {
+                    const task = this.closest('.task-card');
+                    task.classList.add('task-exit');
+                    setTimeout(() => {
+                        task.remove();
+                    }, 300);
+                });
+            });
+            
+            // Add event listeners to delete buttons
+            document.querySelectorAll('.fa-trash').forEach(icon => {
+                icon.closest('button').addEventListener('click', function() {
+                    const task = this.closest('.task-card');
+                    task.classList.add('task-exit');
+                    setTimeout(() => {
+                        task.remove();
+                        
+                        // Show empty state if no tasks
+                        if (document.querySelectorAll('.task-card').length === 0) {
+                            document.querySelector('.empty-state').classList.remove('hidden');
+                        }
+                    }, 300);
+                });
+            });
+            
+            // Animate progress bar
+            setTimeout(() => {
+                document.querySelector('.progress-bar').style.width = '75%';
+            }, 500);
+        });
+    </script>
+</body>
+</html>
